@@ -34,30 +34,11 @@ static void timer_handler(void *unused)
 }
 
 
-static void bridge_rx_handler(void *node_context, dx_link_t *link, pn_delivery_t *delivery)
+static void bridge_rx_handler(void *node_context, dx_link_t *link, dx_delivery_t *delivery)
 {
 }
 
-
-static void bridge_tx_handler(void *node_context, dx_link_t *link, pn_delivery_t *delivery)
-{
-    pn_link_t *pn_link = pn_delivery_link(delivery);
-
-    dx_message_send(msg, pn_link);
-
-    pn_delivery_settle(delivery);
-    pn_link_advance(pn_link);
-    pn_link_offered(pn_link, 32);
-    out_message_count++;
-
-    if (out_message_count == count) {
-        pn_link_close(pn_link);
-        dx_timer_schedule(timer, 1000);
-    }
-}
-
-
-static void bridge_disp_handler(void *node_context, dx_link_t *link, pn_delivery_t *delivery)
+static void bridge_disp_handler(void *node_context, dx_link_t *link, dx_delivery_t *delivery)
 {
 }
 
@@ -83,11 +64,22 @@ static int bridge_writable_handler(void *node_context, dx_link_t *link)
     dtag = tag++;
     sys_mutex_unlock(lock);
 
-    pn_delivery(pn_link, pn_dtag((char*) &dtag, 8));
-    pn_delivery_t *delivery = pn_link_current(pn_link);
+    dx_delivery_t *delivery = dx_delivery(link, pn_dtag((char*) &dtag, 8));
     if (delivery) {
-        bridge_tx_handler(node_context, link, delivery);
-        return 1;
+
+      dx_message_send(msg, link);
+
+      dx_delivery_settle(delivery);
+
+      pn_link_advance(pn_link);
+      pn_link_offered(pn_link, 32);
+      out_message_count++;
+
+      if (out_message_count == count) {
+        dx_link_close(link);
+        dx_timer_schedule(timer, 1000);
+      }
+      return 1;
     }
 
     return 0;
@@ -119,7 +111,6 @@ static void bridge_outbound_conn_open_handler(void *type_context, dx_connection_
 
 static const dx_node_type_t node_descriptor = {"tool-controller", 0, 0,
                                                bridge_rx_handler,
-                                               bridge_tx_handler,
                                                bridge_disp_handler,
                                                bridge_incoming_handler,
                                                bridge_outgoing_handler,

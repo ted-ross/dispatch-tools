@@ -28,8 +28,6 @@ typedef struct ip_header_t {
 //static const char        *MODULE = "R_TOOL";
 static dx_dispatch_t     *dx;
 static dx_node_t         *node;
-//static dx_link_t         *receiver;
-//static uint64_t           tag = 1;
 static sys_mutex_t       *lock;
 static dx_timer_t        *timer;
 
@@ -50,9 +48,9 @@ static void timer_handler(void *unused)
 }
 
 
-static void tool_rx_handler(void *node_context, dx_link_t *link, pn_delivery_t *delivery)
+static void tool_rx_handler(void *node_context, dx_link_t *link, dx_delivery_t *delivery)
 {
-    pn_link_t    *pn_link = pn_delivery_link(delivery);
+    dx_link_t    *dx_link = dx_delivery_link(delivery);
     dx_message_t *msg;
 
     //
@@ -65,6 +63,7 @@ static void tool_rx_handler(void *node_context, dx_link_t *link, pn_delivery_t *
     //
     // Advance the link and issue flow-control credit.
     //
+    pn_link_t    *pn_link = dx_link_pn(dx_link);
     pn_link_advance(pn_link);
     credit_pending++;
     if (credit_pending > CREDIT_BATCH) {
@@ -80,16 +79,11 @@ static void tool_rx_handler(void *node_context, dx_link_t *link, pn_delivery_t *
     //
     // No matter what happened with the message, settle the delivery.
     //
-    pn_delivery_settle(delivery);
+    dx_delivery_settle(delivery);
 }
 
 
-static void tool_tx_handler(void *node_context, dx_link_t *link, pn_delivery_t *delivery)
-{
-}
-
-
-static void tool_disp_handler(void *node_context, dx_link_t *link, pn_delivery_t *delivery)
+static void tool_disp_handler(void *node_context, dx_link_t *link, dx_delivery_t *delivery)
 {
 }
 
@@ -139,7 +133,6 @@ static void tool_outbound_conn_open_handler(void *type_context, dx_connection_t 
 
 static const dx_node_type_t node_descriptor = {"tool-receiver", 0, 0,
                                                tool_rx_handler,
-                                               tool_tx_handler,
                                                tool_disp_handler,
                                                tool_incoming_handler,
                                                tool_outgoing_handler,
