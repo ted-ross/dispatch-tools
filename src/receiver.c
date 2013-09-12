@@ -70,6 +70,7 @@ static void tool_rx_handler(void *node_context, dx_link_t *link, dx_delivery_t *
         pn_link_flow(pn_link, CREDIT_BATCH);
         credit_pending -= CREDIT_BATCH;
     }
+    printf("MESSAGE RECEIVED - Received Message #: %ld\n", in_message_count);
     dx_free_message(msg);
     in_message_count++;
 
